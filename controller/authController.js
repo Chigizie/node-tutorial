@@ -22,6 +22,33 @@ function generateToken(id) {
   });
 }
 
+const generateSendToken = (user, statusCode, res) => {
+  try {
+    const token = generateToken(user._id);
+    res.cookie('jwt', token, {
+      expires: new Date(
+        Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
+      ),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+    });
+    user.password = undefined;
+    // secure: true means the cookie will only be sent on an encrypted connection(https)
+    // httpOnly: true means the cookie cannot be accessed or modified by the browser
+    // this is a security measure to prevent cross-site scripting attacks(XSS)
+    res.status(statusCode).json({
+      status: 'success',
+      token,
+      data: { user },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+    });
+  }
+};
+
 exports.signup = async (req, res, next) => {
   try {
     const newUser = await User.create({
@@ -33,15 +60,17 @@ exports.signup = async (req, res, next) => {
     });
 
     // generating token from jwt
+    generateSendToken(newUser, 201, res);
+    //
 
-    const token = generateToken(newUser._id);
-    res.status(201).json({
-      status: 'success',
-      token,
-      data: {
-        newUser,
-      },
-    });
+    //   const token = generateToken(newUser._id);
+    //   res.status(201).json({
+    //     status: 'success',
+    //     token,
+    //     data: {
+    //       newUser,
+    //     },
+    //   });
   } catch (err) {
     next(err);
   }
@@ -81,11 +110,12 @@ exports.login = async (req, res, next) => {
     return next(appError('Wrong password or email', 401));
   }
 
-  const token = generateToken(user._id);
-  res.status(200).json({
-    sttatus: 'success',
-    token,
-  });
+  generateSendToken(user, 200, res);
+  // const token = generateToken(user._id);
+  // res.status(200).json({
+  //   sttatus: 'success',
+  //   token,
+  // });
 };
 
 exports.protect = async (req, res, next) => {
@@ -167,7 +197,7 @@ exports.restrictTo = function (...roles) {
 
 exports.forgotPassword = async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
-  console.log(user);
+
   // 404 means not found
 
   if (!user)
@@ -217,7 +247,7 @@ exports.resetPassword = async (req, res, next) => {
     passwordResetToken: hashedToken,
     passwordResetExpires: { $gt: Date.now() },
   });
-  console.log({ user });
+
   if (!user) return next(appError('Token is invalid or expired', 400));
   user.password = req.body.password;
   user.confirmPassword = req.body.confirmPassword;
@@ -226,11 +256,14 @@ exports.resetPassword = async (req, res, next) => {
   await user.save();
   // 3) update changedPasswordAt property for the user
   // 4) log the user in, send jwt.
-  const token = generateToken(user._id);
-  res.status(200).json({
-    sttatus: 'success',
-    token,
-  });
+
+  generateSendToken(user, 200, res);
+
+  // const token = generateToken(user._id);
+  // res.status(200).json({
+  //   sttatus: 'success',
+  //   token,
+  // });
 };
 
 exports.updatePassword = async (req, res, next) => {
@@ -240,18 +273,20 @@ exports.updatePassword = async (req, res, next) => {
   // req.user is gotten from the protect middleware
 
   const user = await User.findById(req.user.id).select('+password');
-  console.log({ user });
   // 2) check if posted current password is correct
-  if (!(await user.comparePassword(req.body.currentPassword)))
+  if (!(await user.comparePassword(req.body.password)))
     return next(appError('Your current password is wrong', 401));
   // 3) if so, update password
   user.password = req.body.newPassword;
   user.confirmPassword = req.body.confirmPassword;
   await user.save();
   // 4) log user in, send jwt
-  const token = generateToken(user._id);
-  res.status(200).json({
-    sttatus: 'success',
-    token,
-  });
+
+  generateSendToken(user, 200, res);
+
+  // const token = generateToken(user._id);
+  // res.status(200).json({
+  //   sttatus: 'success',
+  //   token,
+  // });
 };

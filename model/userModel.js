@@ -26,6 +26,11 @@ const userSchema = new mongoose.Schema({
   passwordChangedAt: Date,
   passwordResetToken: String,
   passwordResetExpires: Date,
+  active: {
+    type: Boolean,
+    default: true,
+    select: false,
+  },
 
   photo: { type: String },
 
@@ -71,6 +76,17 @@ userSchema.pre('save', function (next) {
   // so we only set passwordChangedAt when the password is modified and the document is not new
   if (!this.isModified('password') || this.isNew) return next();
   this.passwordChangedAt = Date.now() - 1000; // to make sure the token is always created after the password has been changed
+  next();
+});
+
+// QUERY MIDDLEWARE TO FILTER OUT DEACTIVATED USERS
+// it runs before any find query
+userSchema.pre(/^find/, function (next) {
+  // this points to the current query
+  // we want to find all users whose active field is not equal to false
+  // because we set active to false when the user is deactivated
+  // so for every find query, we want to exclude the deactivated users
+  this.find({ active: { $ne: false } });
   next();
 });
 
