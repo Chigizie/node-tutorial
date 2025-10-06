@@ -12,29 +12,29 @@ const {
 } = require('./handlerFactory');
 
 exports.aliasTopTour = (req, res, next) => {
-  req.query.limit = '5';
-  req.query.sort = '-ratingsAverage,prrice';
-  req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
+  req.query.limit = '5'; // limiting the results to 5
+  req.query.sort = '-ratingsAverage,prrice'; // sorting by ratingsAverage and price in descending order
+  req.query.fields = 'name,price,ratingsAverage,summary,difficulty'; // selecting only the specified fields to be returned in the response
   next();
 }; // middleware function to preset the query parameters for top 5 cheap tours endpoint,
 
 exports.getTourStats = async (req, res) => {
   try {
     const stats = await Tour.aggregate([
-      { $match: { ratingsAverage: { $gte: 4.5 } } },
+      { $match: { ratingsAverage: { $gte: 4.5 } } }, // matching documents with ratingsAverage greater than or equal to 4.5
       {
         $group: {
-          _id: '$difficulty',
+          _id: '$difficulty', // grouping by difficulty
           // _id: "null",  grouping all the documents together
           // _id: '$difficulty', //grouping by difficulty
           // _id: { $toUpper: '$difficulty' }, //grouping by difficulty and converting to uppercase
           // _id: '$ratingsAverage', //grouping by ratingsAverage and so on
-          numTours: { $sum: 1 },
-          numRatings: { $sum: '$ratingsQuantity' },
-          avgRating: { $avg: '$ratingsAverage' },
-          avgPrice: { $avg: '$price' },
-          minPrice: { $min: '$price' },
-          maxPrice: { $max: '$price' },
+          numTours: { $sum: 1 }, // counting the number of tours in each group
+          numRatings: { $sum: '$ratingsQuantity' }, // summing the ratingsQuantity field
+          avgRating: { $avg: '$ratingsAverage' }, // calculating the average of the ratingsAverage field
+          avgPrice: { $avg: '$price' }, // calculating the average of the price field
+          minPrice: { $min: '$price' }, // calculating the minimum of the price field
+          maxPrice: { $max: '$price' }, // calculating the maximum of the price field
         },
       },
       {
@@ -63,10 +63,20 @@ exports.getMonthlyPlan = async (req, res) => {
     const year = req.params.year * 1;
 
     const plan = await Tour.aggregate([
+      // $unwind is used to deconstruct an array field from the input documents to output a document for each element
+      // e.g if a tour has 3 start dates, it will be 3 documents in the pipeline
+      // as shown below
+      // { $startDates: [ '2021-01-01', '2021-02-01', '2021-03-01' ] }
+      // will become
+      // { $startDates: '2021-01-01' }
+      // { $startDates: '2021-02-01' }
+      // { $startDates: '2021-03-01' }
       { $unwind: '$startDates' }, // deconstructing the array of startDates to one document per date
       // so if a tour has 3 start dates, it will be 3 documents in the pipeline
       {
         $match: {
+          // matching the documents with startDates in the specified year
+          // this matches all the dates in the year between January 1st and December 31st
           startDates: {
             $gte: new Date(`${year}-01-01`),
             $lte: new Date(`${year}-12-31`),
@@ -78,7 +88,8 @@ exports.getMonthlyPlan = async (req, res) => {
           _id: { $month: '$startDates' }, // grouping by month
           numTourStarts: { $sum: 1 }, // summing the number of tour starts
 
-          tours: { $push: '$name' }, // pushing the tour names to an array
+          tours: { $push: '$name' }, // pushing the tour names to an array in each group
+          // tours: { $addToSet: '$name' }, // pushing the tour names to an array in each group but only unique names
         },
       },
       {
@@ -86,7 +97,7 @@ exports.getMonthlyPlan = async (req, res) => {
       },
       {
         $project: {
-          _id: 0, // excluding the _id field
+          _id: 0, // excluding the _id field from the result,
         },
       },
       {

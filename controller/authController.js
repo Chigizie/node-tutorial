@@ -25,6 +25,14 @@ function generateToken(id) {
 const generateSendToken = (user, statusCode, res) => {
   try {
     const token = generateToken(user._id);
+    // send token to client in cookie
+    // we are using cookies to store the token because it is more secure than storing it in local storage
+    // because cookies are http only and cannot be accessed or modified by the browser
+    // we are also setting the expires property of the cookie to the same as the token
+    // so that the cookie will expire when the token expires
+    // we are also setting the secure property of the cookie to true in production
+    // so that the cookie will only be sent on an encrypted connection(https)
+
     res.cookie('jwt', token, {
       expires: new Date(
         Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,

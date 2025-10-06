@@ -58,6 +58,23 @@ exports.getAll = (model) => async (req, res) => {
 
 exports.updateOne = (model) => async (req, res, next) => {
   try {
+    // under the hood mongoose uses findOneAndUpdate() to find the document by id and update it
+    // we can also use findByIdAndUpdate() which is a shorthand for findOneAndUpdate()
+    // both methods are similar and take the same parameters
+    // the first parameter is the id of the document to be updated
+    // the second parameter is the data to be updated
+    // the third parameter is an object with options
+    // new: true returns the updated document
+    // runValidators: true runs the validators on the updated document
+    // we are using async await to handle the promise returned by the mongoose method
+    // we are also using try catch to handle any errors that may occur
+    // we are passing the model as a parameter to make this function reusable for other models
+    // e.g we can use this function to update a user or a review or any other model
+    // we just need to pass the model as a parameter when we call the function
+    // e.g updateOne(User) or updateOne(Review)
+    // this is called a factory function
+    // it is a function that returns another function
+    // in this case it returns an async function that takes req, res and next as parameters
     const tour = await model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -102,6 +119,10 @@ exports.createOne = (model) => async (req, res, next) => {
 
 exports.getOne = (model, optionPopulate) => async (req, res) => {
   // const id = Number(req.params.id);
+  // under the hood mongoose uses findOne() to find the document by id
+  // we can also use findById() which is a shorthand for findOne()
+  // if we want to use regex to find the document by id, we have to use findOne(), because findById() does not support regex
+
   let doc;
   if (optionPopulate) {
     doc = await model.findById(req.params.id).populate(optionPopulate); // populate() is a mongoose method that populates the referenced documents in the query result
